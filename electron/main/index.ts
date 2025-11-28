@@ -215,22 +215,30 @@ ipcMain.handle('select-folder', async () => {
 
 ipcMain.handle('get-network-interfaces', () => {
   const interfaces = os.networkInterfaces();
-  return Object.keys(interfaces);
+  const names = Object.keys(interfaces);
+  console.log('Detected Network Interfaces:', names);
+  return names;
 });
 
 ipcMain.handle('set-network-settings', async (_, { ip, gateway, interfaceName }) => {
   return new Promise((resolve) => {
     // Note: This requires the app to be run as Administrator
     const iface = interfaceName || "Ethernet";
-    const command = `netsh interface ip set address "${iface}" static ${ip} 255.255.255.0 ${gateway}`;
+    console.log(`Attempting to set network settings for interface: "${iface}"`);
+    console.log(`IP: ${ip}, Gateway: ${gateway}`);
 
-    exec(command, (error, stdout, stderr) => {
+    const command = `netsh interface ip set address "${iface}" static ${ip} 255.255.255.0 ${gateway}`;
+    console.log(`Executing command: ${command}`);
+
+    exec(command, { encoding: 'utf8' }, (error, stdout, stderr) => {
       if (error) {
         console.error(`exec error: ${error}`);
         console.error(`stderr: ${stderr}`);
+        console.error(`stdout: ${stdout}`);
         resolve({ success: false, error: `${error.message}. Stderr: ${stderr}` });
         return;
       }
+      console.log('Network settings applied successfully.');
       resolve({ success: true });
     });
   });
