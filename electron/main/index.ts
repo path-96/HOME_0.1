@@ -1,4 +1,5 @@
 import { app, BrowserWindow, shell, ipcMain, dialog } from 'electron'
+import { exec } from 'child_process'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
@@ -210,4 +211,27 @@ ipcMain.handle('select-folder', async () => {
     return filePaths[0];
   }
   return null;
+});
+
+ipcMain.handle('get-network-interfaces', () => {
+  const interfaces = os.networkInterfaces();
+  return Object.keys(interfaces);
+});
+
+ipcMain.handle('set-network-settings', async (_, { ip, gateway, interfaceName }) => {
+  return new Promise((resolve) => {
+    // Note: This requires the app to be run as Administrator
+    const iface = interfaceName || "Ethernet";
+    const command = `netsh interface ip set address "${iface}" static ${ip} 255.255.255.0 ${gateway}`;
+
+    exec(command, (error, stdout, stderr) => {
+      if (error) {
+        console.error(`exec error: ${error}`);
+        console.error(`stderr: ${stderr}`);
+        resolve({ success: false, error: `${error.message}. Stderr: ${stderr}` });
+        return;
+      }
+      resolve({ success: true });
+    });
+  });
 });

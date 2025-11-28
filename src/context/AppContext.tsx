@@ -6,7 +6,7 @@ interface AppContextType {
     projects: Project[];
     activeProjectId: string | null;
     shortcuts: Shortcut[];
-    addProject: (name: string, description?: string) => void;
+    addProject: (name: string, description?: string, ip?: string, gateway?: string) => void;
     deleteProject: (id: string) => void;
     updateProject: (id: string, updates: Partial<Project>) => void;
     setActiveProject: (id: string) => void;
@@ -23,6 +23,13 @@ interface AppContextType {
     theme: 'light' | 'dark';
     toggleTheme: () => void;
     importData: (data: any) => void;
+    globalNetworkSettings: { ip: string; gateway: string; interfaceName?: string };
+    updateGlobalNetworkSettings: (settings: { ip: string; gateway: string; interfaceName?: string }) => void;
+    availableInterfaces: string[];
+    refreshInterfaces: () => Promise<void>;
+    googleAuth: { isAuthenticated: boolean; tokens: any; user: any };
+    login: () => Promise<void>;
+    logout: () => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -34,6 +41,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const [globalShortcuts, setGlobalShortcuts] = useState<Shortcut[]>([]);
     const [calendarMemos, setCalendarMemos] = useState<Record<string, string>>({});
     const [theme, setTheme] = useState<'light' | 'dark'>('dark');
+    const [globalNetworkSettings, setGlobalNetworkSettings] = useState<{ ip: string; gateway: string; interfaceName?: string }>({ ip: '', gateway: '', interfaceName: 'Ethernet' });
+    const [availableInterfaces, setAvailableInterfaces] = useState<string[]>([]);
+    const [googleAuth, setGoogleAuth] = useState({ isAuthenticated: false, tokens: null, user: null });
+
+    const login = async () => {
+        // Placeholder for login logic
+        console.log("Login not implemented");
+    };
+
+    const logout = () => {
+        setGoogleAuth({ isAuthenticated: false, tokens: null, user: null });
+    };
 
     // Load data from localStorage
     useEffect(() => {
@@ -42,6 +61,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const savedGlobalShortcuts = localStorage.getItem('globalShortcuts');
         const savedMemos = localStorage.getItem('calendarMemos');
         const savedTheme = localStorage.getItem('theme') as 'light' | 'dark';
+        const savedNetworkSettings = localStorage.getItem('globalNetworkSettings');
 
         if (savedProjects) {
             const parsedProjects = JSON.parse(savedProjects);
@@ -68,6 +88,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         if (savedTheme) {
             setTheme(savedTheme);
+        }
+
+        if (savedNetworkSettings) {
+            setGlobalNetworkSettings(JSON.parse(savedNetworkSettings));
         }
     }, []);
 
@@ -98,17 +122,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
     }, [theme]);
 
+    useEffect(() => {
+        localStorage.setItem('globalNetworkSettings', JSON.stringify(globalNetworkSettings));
+    }, [globalNetworkSettings]);
+
     const toggleTheme = () => {
         setTheme(prev => prev === 'light' ? 'dark' : 'light');
     };
 
-    const addProject = (name: string, description?: string) => {
+    const addProject = (name: string, description?: string, ip?: string, gateway?: string) => {
         const newProject: Project = {
             id: uuidv4(),
             name,
             description: description || '',
             isPinned: false,
-            notes: ''
+            notes: '',
+            ip: ip || '',
+            gateway: gateway || ''
         };
         setProjects([...projects, newProject]);
         setActiveProjectId(newProject.id);
@@ -169,11 +199,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }));
     };
 
+    const updateGlobalNetworkSettings = (settings: { ip: string; gateway: string; interfaceName?: string }) => {
+        setGlobalNetworkSettings(settings);
+    };
+
+    const refreshInterfaces = async () => {
+        try {
+            // @ts-ignore
+            const interfaces = await window.ipcRenderer.invoke('get-network-interfaces');
+            setAvailableInterfaces(interfaces);
+        } catch (error) {
+            console.error('Failed to fetch network interfaces:', error);
+        }
+    };
+
+    useEffect(() => {
+        refreshInterfaces();
+    }, []);
+
     const importData = (data: any) => {
         if (data.projects) setProjects(data.projects);
         if (data.shortcuts) setShortcuts(data.shortcuts);
         if (data.globalShortcuts) setGlobalShortcuts(data.globalShortcuts);
         if (data.calendarMemos) setCalendarMemos(data.calendarMemos);
+        if (data.globalNetworkSettings) setGlobalNetworkSettings(data.globalNetworkSettings);
         if (data.projects && data.projects.length > 0) {
             setActiveProjectId(data.projects[0].id);
         }
@@ -200,7 +249,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             updateCalendarMemo,
             theme,
             toggleTheme,
-            importData
+            importData,
+            globalNetworkSettings,
+            updateGlobalNetworkSettings,
+            availableInterfaces,
+            refreshInterfaces,
+            googleAuth,
+            login,
+            logout
         }}>
             {children}
         </AppContext.Provider>

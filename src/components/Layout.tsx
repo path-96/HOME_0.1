@@ -1,8 +1,9 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import Sidebar from './Sidebar';
 import TitleBar from './TitleBar';
-import { Menu, Calendar } from 'lucide-react';
+import { Menu, Calendar, Network } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import Modal from './Modal';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -14,7 +15,12 @@ const Layout: React.FC<LayoutProps> = ({ children, rightPanel }) => {
   const [rightPanelOpen, setRightPanelOpen] = useState(false);
   const [rightPanelWidth, setRightPanelWidth] = useState(384); // Default w-96 (24rem * 16px)
   const isResizingRef = useRef(false);
-  const { projects, activeProjectId } = useApp();
+  const { projects, activeProjectId, updateProject, globalNetworkSettings } = useApp();
+
+  // Network Modal State
+  const [isNetworkModalOpen, setIsNetworkModalOpen] = useState(false);
+  const [networkIp, setNetworkIp] = useState('');
+  const [networkGateway, setNetworkGateway] = useState('');
 
   const activeProject = projects.find(p => p.id === activeProjectId);
 
@@ -40,6 +46,45 @@ const Layout: React.FC<LayoutProps> = ({ children, rightPanel }) => {
       setRightPanelWidth(newWidth);
     }
   }, []);
+
+  const openNetworkModal = () => {
+    if (activeProject) {
+      setNetworkIp(activeProject.ip || '');
+      setNetworkGateway(activeProject.gateway || '');
+      setIsNetworkModalOpen(true);
+    }
+  };
+
+  const handleSaveNetwork = async () => {
+    if (activeProject) {
+      // Update local state
+      updateProject(activeProject.id, {
+        ip: networkIp,
+        gateway: networkGateway
+      });
+
+      // Apply system settings
+      try {
+        // @ts-ignore
+        const result = await window.ipcRenderer.invoke('set-network-settings', {
+          ip: networkIp,
+          gateway: networkGateway,
+          interfaceName: globalNetworkSettings.interfaceName
+        });
+
+        if (result.success) {
+          alert('Network settings applied successfully!');
+        } else {
+          alert(`Failed to apply network settings: ${result.error}\nMake sure you are running as Administrator.`);
+        }
+      } catch (error) {
+        console.error('Failed to set network settings:', error);
+        alert('Failed to set network settings. See console for details.');
+      }
+
+      setIsNetworkModalOpen(false);
+    }
+  };
 
   return (
     <div className="flex flex-col h-screen w-screen bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 overflow-hidden border border-zinc-200 dark:border-zinc-800 transition-colors duration-200">
@@ -78,6 +123,16 @@ const Layout: React.FC<LayoutProps> = ({ children, rightPanel }) => {
               )}
             </div>
 
+            {activeProject && (
+              <button
+                onClick={openNetworkModal}
+                className="p-2 mr-2 bg-transparent border-none outline-none rounded-lg transition-colors text-emerald-900/40 dark:text-emerald-500/40 hover:bg-emerald-500/10 hover:text-emerald-900 dark:hover:text-emerald-400"
+                title="Network Settings"
+              >
+                <Network size={20} />
+              </button>
+            )}
+
             <button
               onClick={() => setRightPanelOpen(!rightPanelOpen)}
               className={`p-2 bg-transparent border-none outline-none rounded-lg transition-colors ${rightPanelOpen
@@ -109,6 +164,51 @@ const Layout: React.FC<LayoutProps> = ({ children, rightPanel }) => {
           {rightPanel}
         </div>
       </div>
+
+      <Modal
+        isOpen={isNetworkModalOpen}
+        onClose={() => setIsNetworkModalOpen(false)}
+        title="Project Network Settings"
+        footer={
+          <>
+            <button
+              onClick={() => setIsNetworkModalOpen(false)}
+              className="px-4 py-2 text-sm font-medium text-green-800 dark:text-zinc-400 hover:text-green-950 dark:hover:text-zinc-100 hover:bg-green-100 dark:hover:bg-zinc-700 rounded transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSaveNetwork}
+              className="px-4 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded transition-colors"
+            >
+              Change IP
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-green-900 dark:text-zinc-300 mb-1">IP Address</label>
+            <input
+              type="text"
+              value={networkIp}
+              onChange={e => setNetworkIp(e.target.value)}
+              className="w-full bg-white dark:bg-zinc-700 text-green-950 dark:text-white px-3 py-2 rounded outline-none focus:ring-2 focus:ring-emerald-500 border border-green-200 dark:border-zinc-600 focus:border-emerald-500 transition-all"
+              placeholder="e.g., 192.168.1.10"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-green-900 dark:text-zinc-300 mb-1">Default Gateway</label>
+            <input
+              type="text"
+              value={networkGateway}
+              onChange={e => setNetworkGateway(e.target.value)}
+              className="w-full bg-white dark:bg-zinc-700 text-green-950 dark:text-white px-3 py-2 rounded outline-none focus:ring-2 focus:ring-emerald-500 border border-green-200 dark:border-zinc-600 focus:border-emerald-500 transition-all"
+              placeholder="e.g., 192.168.1.1"
+            />
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

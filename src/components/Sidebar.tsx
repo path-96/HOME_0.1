@@ -17,6 +17,8 @@ const Sidebar: React.FC = () => {
     // Project Form State
     const [projectName, setProjectName] = useState('');
     const [projectDesc, setProjectDesc] = useState('');
+    const [projectIp, setProjectIp] = useState('');
+    const [projectGateway, setProjectGateway] = useState('');
 
     // Shortcut Modal State
     const [isShortcutModalOpen, setIsShortcutModalOpen] = useState(false);
@@ -29,6 +31,8 @@ const Sidebar: React.FC = () => {
         setModalMode('create');
         setProjectName('');
         setProjectDesc('');
+        setProjectIp('');
+        setProjectGateway('');
         setIsModalOpen(true);
     };
 
@@ -38,6 +42,8 @@ const Sidebar: React.FC = () => {
         setEditingId(project.id);
         setProjectName(project.name);
         setProjectDesc(project.description || '');
+        setProjectIp(project.ip || '');
+        setProjectGateway(project.gateway || '');
         setIsModalOpen(true);
     };
 
@@ -45,11 +51,13 @@ const Sidebar: React.FC = () => {
         if (!projectName.trim()) return;
 
         if (modalMode === 'create') {
-            addProject(projectName.trim(), projectDesc.trim());
+            addProject(projectName.trim(), projectDesc.trim(), projectIp.trim(), projectGateway.trim());
         } else if (modalMode === 'edit' && editingId) {
             updateProject(editingId, {
                 name: projectName.trim(),
-                description: projectDesc.trim()
+                description: projectDesc.trim(),
+                ip: projectIp.trim(),
+                gateway: projectGateway.trim()
             });
         }
         setIsModalOpen(false);
@@ -347,6 +355,28 @@ const Sidebar: React.FC = () => {
                             className="w-full bg-white dark:bg-zinc-700 text-green-950 dark:text-white px-3 py-2 rounded outline-none focus:ring-2 focus:ring-emerald-500 border border-green-200 dark:border-zinc-600 focus:border-emerald-500 transition-all h-24 resize-none"
                             placeholder="Brief details about this project..."
                         />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-green-900 dark:text-zinc-300 mb-1">IP Address (Optional)</label>
+                            <input
+                                type="text"
+                                value={projectIp}
+                                onChange={e => setProjectIp(e.target.value)}
+                                className="w-full bg-white dark:bg-zinc-700 text-green-950 dark:text-white px-3 py-2 rounded outline-none focus:ring-2 focus:ring-emerald-500 border border-green-200 dark:border-zinc-600 focus:border-emerald-500 transition-all"
+                                placeholder="192.168.1.x"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-green-900 dark:text-zinc-300 mb-1">Gateway (Optional)</label>
+                            <input
+                                type="text"
+                                value={projectGateway}
+                                onChange={e => setProjectGateway(e.target.value)}
+                                className="w-full bg-white dark:bg-zinc-700 text-green-950 dark:text-white px-3 py-2 rounded outline-none focus:ring-2 focus:ring-emerald-500 border border-green-200 dark:border-zinc-600 focus:border-emerald-500 transition-all"
+                                placeholder="192.168.1.1"
+                            />
+                        </div>
                     </div>
                 </div>
             </Modal>

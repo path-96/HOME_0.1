@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { X, Settings as SettingsIcon, Database, Download, Upload, AlertTriangle } from 'lucide-react';
+import { X, Settings as SettingsIcon, Database, Download, Upload, AlertTriangle, Network } from 'lucide-react';
 
 interface SettingsModalProps {
     isOpen: boolean;
@@ -9,9 +9,53 @@ interface SettingsModalProps {
 import { useApp } from '../context/AppContext';
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
-    const { theme, toggleTheme, projects, shortcuts, globalShortcuts, calendarMemos, importData } = useApp();
-    const [activeTab, setActiveTab] = useState<'general' | 'data'>('general');
+    const { theme, toggleTheme, projects, shortcuts, globalShortcuts, calendarMemos, importData, globalNetworkSettings, updateGlobalNetworkSettings, availableInterfaces, refreshInterfaces } = useApp();
+    const [activeTab, setActiveTab] = useState<'general' | 'data' | 'network'>('general');
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Local state for network settings
+    const [tempIp, setTempIp] = useState(globalNetworkSettings.ip);
+    const [tempGateway, setTempGateway] = useState(globalNetworkSettings.gateway);
+    const [tempInterface, setTempInterface] = useState(globalNetworkSettings.interfaceName || 'Ethernet');
+
+    // Update local state when global settings change (e.g. on initial load)
+    React.useEffect(() => {
+        setTempIp(globalNetworkSettings.ip);
+        setTempGateway(globalNetworkSettings.gateway);
+        setTempInterface(globalNetworkSettings.interfaceName || 'Ethernet');
+    }, [globalNetworkSettings]);
+
+    React.useEffect(() => {
+        if (isOpen && activeTab === 'network') {
+            refreshInterfaces();
+        }
+    }, [isOpen, activeTab]);
+
+    const handleSaveNetworkSettings = async () => {
+        updateGlobalNetworkSettings({
+            ip: tempIp,
+            gateway: tempGateway,
+            interfaceName: tempInterface
+        });
+
+        try {
+            // @ts-ignore
+            const result = await window.ipcRenderer.invoke('set-network-settings', {
+                ip: tempIp,
+                gateway: tempGateway,
+                interfaceName: tempInterface
+            });
+
+            if (result.success) {
+                alert('Network settings saved and applied successfully!');
+            } else {
+                alert(`Failed to apply network settings: ${result.error}\nMake sure you are running as Administrator.`);
+            }
+        } catch (error) {
+            console.error('Failed to set network settings:', error);
+            alert('Failed to set network settings. See console for details.');
+        }
+    };
 
     if (!isOpen) return null;
 
@@ -95,6 +139,16 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                         >
                             <Database size={16} />
                             Data
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('network')}
+                            className={`w-full text-left px-4 py-2 rounded-lg mb-1 flex items-center gap-2 transition-colors ${activeTab === 'network'
+                                ? 'bg-blue-600/20 text-blue-400'
+                                : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                                }`}
+                        >
+                            <Network size={16} />
+                            Network
                         </button>
                     </div>
 
@@ -190,6 +244,61 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                                                 <AlertTriangle size={14} className="mt-0.5 shrink-0" />
                                                 <span>Warning: Importing data will overwrite all your current projects and settings. This action cannot be undone.</span>
                                             </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'network' && (
+                            <div className="space-y-8">
+                                <div>
+                                    <h3 className="text-white font-medium mb-4">Global Network Settings</h3>
+                                    <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700 space-y-4">
+                                        <div>
+                                            <label className="block text-sm text-gray-400 mb-1">Network Interface</label>
+                                            <select
+                                                value={tempInterface}
+                                                onChange={(e) => setTempInterface(e.target.value)}
+                                                className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 transition-colors"
+                                            >
+                                                {availableInterfaces.map(iface => (
+                                                    <option key={iface} value={iface}>{iface}</option>
+                                                ))}
+                                                {availableInterfaces.length === 0 && <option value="Ethernet">Ethernet (Default)</option>}
+                                            </select>
+                                            <p className="text-xs text-gray-500 mt-1">Select the network adapter to configure.</p>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm text-gray-400 mb-1">Default IP Address</label>
+                                            <input
+                                                type="text"
+                                                value={tempIp}
+                                                onChange={(e) => setTempIp(e.target.value)}
+                                                placeholder="e.g., 192.168.1.1"
+                                                className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 transition-colors"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm text-gray-400 mb-1">Default Gateway</label>
+                                            <input
+                                                type="text"
+                                                value={tempGateway}
+                                                onChange={(e) => setTempGateway(e.target.value)}
+                                                placeholder="e.g., 192.168.1.254"
+                                                className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 transition-colors"
+                                            />
+                                        </div>
+                                        <div className="flex items-center justify-between pt-2">
+                                            <p className="text-xs text-gray-500">
+                                                These settings will be used as defaults but can be overridden per project.
+                                            </p>
+                                            <button
+                                                onClick={handleSaveNetworkSettings}
+                                                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
+                                            >
+                                                Save Network Settings
+                                            </button>
                                         </div>
                                     </div>
                                 </div>

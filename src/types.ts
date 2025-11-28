@@ -4,6 +4,8 @@ export interface Project {
     description?: string;
     isPinned: boolean;
     notes: string;
+    ip?: string;
+    gateway?: string;
 }
 
 export interface Shortcut {
