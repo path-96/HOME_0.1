@@ -3,9 +3,97 @@ import { useApp } from '../context/AppContext';
 import { Shortcut } from '../types';
 import { File, Folder, Globe, Trash2, Plus, Link as LinkIcon, HardDrive, Edit2 } from 'lucide-react';
 import Modal from './Modal';
+import {
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    DragEndEvent
+} from '@dnd-kit/core';
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    rectSortingStrategy,
+    useSortable
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+
+// Sortable Item Component
+const SortableShortcutItem = ({
+    shortcut,
+    openShortcut,
+    removeShortcut,
+    openEditModal
+}: {
+    shortcut: Shortcut;
+    openShortcut: (s: Shortcut) => void;
+    removeShortcut: (id: string) => void;
+    openEditModal: (s: Shortcut) => void;
+}) => {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging
+    } = useSortable({ id: shortcut.id });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        zIndex: isDragging ? 10 : 1,
+        opacity: isDragging ? 0.5 : 1
+    };
+
+    return (
+        <div
+            ref={setNodeRef}
+            style={style}
+            {...attributes}
+            {...listeners}
+            className="group relative bg-white dark:bg-zinc-900 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all cursor-pointer flex flex-col items-center gap-3 shadow-sm hover:shadow-md hover:shadow-zinc-900/10"
+            onClick={() => openShortcut(shortcut)}
+        >
+            <div className="w-12 h-12 flex items-center justify-center pointer-events-none">
+                {shortcut.icon ? (
+                    <img src={shortcut.icon} alt={shortcut.name} className="w-full h-full object-contain" />
+                ) : (
+                    shortcut.type === 'folder' ? <Folder size={40} className="text-zinc-400" /> :
+                        shortcut.type === 'url' ? <Globe size={40} className="text-zinc-500" /> :
+                            <File size={40} className="text-zinc-400 dark:text-zinc-600" />
+                )}
+            </div>
+
+            <span className="text-sm text-center font-medium text-zinc-900 dark:text-zinc-300 group-hover:text-zinc-900 dark:group-hover:text-white truncate w-full px-1 pointer-events-none">
+                {shortcut.name}
+            </span>
+
+            <button
+                onClick={(e) => { e.stopPropagation(); removeShortcut(shortcut.id); }}
+                className="absolute top-2 right-2 p-1.5 bg-zinc-100 dark:bg-zinc-900/80 rounded-full text-red-500 dark:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-100 dark:hover:bg-red-900 hover:text-red-600 dark:hover:text-white"
+                title="Remove Shortcut"
+                onPointerDown={(e) => e.stopPropagation()} // Prevent drag start
+            >
+                <Trash2 size={12} />
+            </button>
+            <button
+                onClick={(e) => { e.stopPropagation(); openEditModal(shortcut); }}
+                className="absolute top-2 left-2 p-1.5 bg-zinc-100 dark:bg-zinc-900/80 rounded-full text-zinc-600 dark:text-zinc-400 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-zinc-200 dark:hover:bg-zinc-900 hover:text-zinc-900 dark:hover:text-white"
+                title="Edit Shortcut"
+                onPointerDown={(e) => e.stopPropagation()} // Prevent drag start
+            >
+                <Edit2 size={12} />
+            </button>
+        </div>
+    );
+};
 
 const ShortcutGrid: React.FC = () => {
-    const { shortcuts, activeProjectId, addShortcut, updateShortcut, removeShortcut, projects, t } = useApp();
+    const { shortcuts, activeProjectId, addShortcut, updateShortcut, removeShortcut, reorderShortcuts, projects, t } = useApp();
 
     // Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -16,6 +104,29 @@ const ShortcutGrid: React.FC = () => {
 
     const activeProject = projects.find(p => p.id === activeProjectId);
     const activeShortcuts = shortcuts.filter(s => s.projectId === activeProjectId);
+
+    const sensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 8, // Require 8px movement before drag starts
+            },
+        }),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
+
+    const handleDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event;
+
+        if (over && active.id !== over.id && activeProjectId) {
+            const oldIndex = activeShortcuts.findIndex((s) => s.id === active.id);
+            const newIndex = activeShortcuts.findIndex((s) => s.id === over.id);
+
+            const newOrder = arrayMove(activeShortcuts, oldIndex, newIndex);
+            reorderShortcuts(activeProjectId, newOrder);
+        }
+    };
 
     const handleDrop = useCallback(async (e: React.DragEvent) => {
         e.preventDefault();
@@ -170,55 +281,39 @@ const ShortcutGrid: React.FC = () => {
                     </button>
                 </div>
             ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                    {activeShortcuts.map(shortcut => (
-                        <div
-                            key={shortcut.id}
-                            className="group relative bg-white dark:bg-zinc-900 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all cursor-pointer flex flex-col items-center gap-3 shadow-sm hover:shadow-md hover:shadow-zinc-900/10"
-                            onClick={() => openShortcut(shortcut)}
-                        >
-                            <div className="w-12 h-12 flex items-center justify-center">
-                                {shortcut.icon ? (
-                                    <img src={shortcut.icon} alt={shortcut.name} className="w-full h-full object-contain" />
-                                ) : (
-                                    shortcut.type === 'folder' ? <Folder size={40} className="text-zinc-400" /> :
-                                        shortcut.type === 'url' ? <Globe size={40} className="text-zinc-500" /> :
-                                            <File size={40} className="text-zinc-400 dark:text-zinc-600" />
-                                )}
-                            </div>
-
-                            <span className="text-sm text-center font-medium text-zinc-900 dark:text-zinc-300 group-hover:text-zinc-900 dark:group-hover:text-white truncate w-full px-1">
-                                {shortcut.name}
-                            </span>
-
-                            <button
-                                onClick={(e) => { e.stopPropagation(); removeShortcut(shortcut.id); }}
-                                className="absolute top-2 right-2 p-1.5 bg-zinc-100 dark:bg-zinc-900/80 rounded-full text-red-500 dark:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-100 dark:hover:bg-red-900 hover:text-red-600 dark:hover:text-white"
-                                title="Remove Shortcut"
-                            >
-                                <Trash2 size={12} />
-                            </button>
-                            <button
-                                onClick={(e) => { e.stopPropagation(); openEditModal(shortcut); }}
-                                className="absolute top-2 left-2 p-1.5 bg-zinc-100 dark:bg-zinc-900/80 rounded-full text-zinc-600 dark:text-zinc-400 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-zinc-200 dark:hover:bg-zinc-900 hover:text-zinc-900 dark:hover:text-white"
-                                title="Edit Shortcut"
-                            >
-                                <Edit2 size={12} />
-                            </button>
-                        </div>
-                    ))}
-
-                    {/* Add New Shortcut Button */}
-                    <div
-                        className="group bg-zinc-50/50 dark:bg-zinc-800/30 p-4 rounded-xl border border-dashed border-zinc-200 dark:border-zinc-700 hover:border-zinc-400 dark:hover:border-zinc-500 hover:bg-white dark:hover:bg-zinc-800 transition-all cursor-pointer flex flex-col items-center justify-center gap-2 min-h-[140px]"
-                        onClick={() => setIsModalOpen(true)}
+                <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEnd}
+                >
+                    <SortableContext
+                        items={activeShortcuts.map(s => s.id)}
+                        strategy={rectSortingStrategy}
                     >
-                        <div className="w-10 h-10 rounded-full bg-zinc-100 dark:bg-zinc-700 group-hover:bg-zinc-900 dark:group-hover:bg-zinc-600 flex items-center justify-center transition-colors">
-                            <Plus size={24} className="text-zinc-500 dark:text-zinc-400 group-hover:text-white" />
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                            {activeShortcuts.map(shortcut => (
+                                <SortableShortcutItem
+                                    key={shortcut.id}
+                                    shortcut={shortcut}
+                                    openShortcut={openShortcut}
+                                    removeShortcut={removeShortcut}
+                                    openEditModal={openEditModal}
+                                />
+                            ))}
+
+                            {/* Add New Shortcut Button */}
+                            <div
+                                className="group bg-zinc-50/50 dark:bg-zinc-800/30 p-4 rounded-xl border border-dashed border-zinc-200 dark:border-zinc-700 hover:border-zinc-400 dark:hover:border-zinc-500 hover:bg-white dark:hover:bg-zinc-800 transition-all cursor-pointer flex flex-col items-center justify-center gap-2 min-h-[140px]"
+                                onClick={() => setIsModalOpen(true)}
+                            >
+                                <div className="w-10 h-10 rounded-full bg-zinc-100 dark:bg-zinc-700 group-hover:bg-zinc-900 dark:group-hover:bg-zinc-600 flex items-center justify-center transition-colors">
+                                    <Plus size={24} className="text-zinc-500 dark:text-zinc-400 group-hover:text-white" />
+                                </div>
+                                <span className="text-sm font-medium text-zinc-600 dark:text-zinc-400 group-hover:text-zinc-900 dark:group-hover:text-zinc-200">{t('addShortcut')}</span>
+                            </div>
                         </div>
-                        <span className="text-sm font-medium text-zinc-600 dark:text-zinc-400 group-hover:text-zinc-900 dark:group-hover:text-zinc-200">{t('addShortcut')}</span>
-                    </div>
-                </div>
+                    </SortableContext>
+                </DndContext>
             )}
 
             <Modal

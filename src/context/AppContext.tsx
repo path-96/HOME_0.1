@@ -14,6 +14,7 @@ interface AppContextType {
     addShortcut: (shortcut: Omit<Shortcut, 'id'>) => void;
     updateShortcut: (id: string, updates: Partial<Shortcut>) => void;
     removeShortcut: (id: string) => void;
+    reorderShortcuts: (projectId: string, newOrderedShortcuts: Shortcut[]) => void;
     globalShortcuts: Shortcut[];
     addGlobalShortcut: (shortcut: Omit<Shortcut, 'id'>) => void;
     updateGlobalShortcut: (id: string, updates: Partial<Shortcut>) => void;
@@ -180,6 +181,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const removeShortcut = (id: string) => {
         setShortcuts(shortcuts.filter(s => s.id !== id));
+    };
+
+    const reorderShortcuts = (projectId: string, newOrderedShortcuts: Shortcut[]) => {
+        // Keep shortcuts from other projects
+        const otherShortcuts = shortcuts.filter(s => s.projectId !== projectId);
+        // Combine with new ordered shortcuts
+        setShortcuts([...otherShortcuts, ...newOrderedShortcuts]);
     };
 
     const addGlobalShortcut = (shortcut: Omit<Shortcut, 'id'>) => {
@@ -421,6 +429,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             addShortcut,
             updateShortcut,
             removeShortcut,
+            reorderShortcuts,
             globalShortcuts,
             addGlobalShortcut,
             updateGlobalShortcut,
