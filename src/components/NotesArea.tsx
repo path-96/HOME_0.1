@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
-import { Save, FileText, Maximize2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Save, FileText, Maximize2, ChevronDown, ChevronUp, Upload } from 'lucide-react';
 import NotesModal from './NotesModal';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
@@ -60,6 +60,28 @@ const NotesArea: React.FC<NotesAreaProps> = ({ isCollapsed = false, onToggleColl
         }
     };
 
+    const handleImport = async () => {
+        if (!activeProject) return;
+        try {
+            // @ts-ignore
+            const filePath = await window.ipcRenderer.invoke('select-note-file');
+            if (filePath) {
+                // @ts-ignore
+                const content = await window.ipcRenderer.invoke('read-file', filePath);
+                if (content) {
+                    const html = converter.makeHtml(content);
+                    setEditorContent(html);
+
+                    // Update project notes immediately
+                    const markdown = turndownService.turndown(html);
+                    updateProjectNotes(activeProject.id, markdown);
+                }
+            }
+        } catch (err) {
+            console.error('Failed to import notes', err);
+        }
+    };
+
     const handleExport = async () => {
         if (!activeProject) return;
         try {
@@ -99,6 +121,13 @@ const NotesArea: React.FC<NotesAreaProps> = ({ isCollapsed = false, onToggleColl
                         title={t('viewLarge')}
                     >
                         <Maximize2 size={16} />
+                    </button>
+                    <button
+                        onClick={handleImport}
+                        className="p-1.5 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded transition-colors"
+                        title={t('import')}
+                    >
+                        <Upload size={16} />
                     </button>
                     <button
                         onClick={handleExport}

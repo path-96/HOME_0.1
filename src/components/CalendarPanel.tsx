@@ -1,6 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Calendar, momentLocalizer, Components } from 'react-big-calendar';
 import moment from 'moment';
+import 'moment/locale/ja';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import { ExternalLink, Calendar as CalendarIcon, X, Save } from 'lucide-react';
 import { useApp } from '../context/AppContext';
@@ -9,11 +10,15 @@ import CalendarModal from './CalendarModal';
 const localizer = momentLocalizer(moment);
 
 const CalendarPanel: React.FC = () => {
-    const { calendarMemos, updateCalendarMemo, t } = useApp();
+    const { calendarMemos, updateCalendarMemo, t, language } = useApp();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedDate, setSelectedDate] = useState<Date | null>(null);
     const [memoText, setMemoText] = useState('');
     const [tooltip, setTooltip] = useState<{ text: string; x: number; y: number } | null>(null);
+
+    useEffect(() => {
+        moment.locale(language);
+    }, [language]);
 
     const handleSelectSlot = (slotInfo: { start: Date; box?: { x: number; y: number; clientX: number; clientY: number } }) => {
         const dateStr = moment(slotInfo.start).format('YYYY-MM-DD');
@@ -71,6 +76,43 @@ const CalendarPanel: React.FC = () => {
         },
     }), [calendarMemos]);
 
+    const formats = useMemo(() => ({
+        monthHeaderFormat: (date: Date, culture?: string, localizer?: any) => {
+            if (culture === 'ja') {
+                return localizer.format(date, 'YYYY年 M月', culture);
+            }
+            return localizer.format(date, 'MMMM YYYY', culture);
+        },
+        weekdayFormat: (date: Date, culture?: string, localizer?: any) => {
+            if (culture === 'ja') {
+                const days = ['日', '月', '火', '水', '木', '金', '土'];
+                return days[date.getDay()];
+            }
+            return localizer.format(date, 'ddd', culture);
+        }
+    }), []);
+
+    const messages = useMemo(() => {
+        if (language === 'ja') {
+            return {
+                next: '次へ',
+                previous: '前へ',
+                today: '今日',
+                month: '月',
+                week: '週',
+                day: '日'
+            };
+        }
+        return {
+            next: 'Next',
+            previous: 'Back',
+            today: 'Today',
+            month: 'Month',
+            week: 'Week',
+            day: 'Day'
+        };
+    }, [language]);
+
     return (
         <div className="h-full flex flex-col bg-white dark:bg-zinc-900 border-l border-zinc-200 dark:border-zinc-800 relative">
             <style>{`
@@ -92,6 +134,17 @@ const CalendarPanel: React.FC = () => {
                 .dark .rbc-toolbar-label { color: #f4f4f5; }
                 .rbc-btn-group button { color: #27272a; font-size: 0.8rem; padding: 4px 8px; }
                 .dark .rbc-btn-group button { color: #a1a1aa; }
+                
+                /* Reorder Navigation Buttons: Back, Today, Next */
+                .rbc-toolbar .rbc-btn-group:first-child { display: flex; }
+                .rbc-toolbar .rbc-btn-group:first-child button:nth-child(1) { order: 2; border-radius: 0 !important; margin: 0 !important; border-left: none; } /* Today (Middle) */
+                .rbc-toolbar .rbc-btn-group:first-child button:nth-child(2) { order: 1; border-radius: 6px 0 0 6px !important; margin: 0 !important; } /* Back (Left) */
+                .rbc-toolbar .rbc-btn-group:first-child button:nth-child(3) { order: 3; border-radius: 0 6px 6px 0 !important; margin: 0 !important; border-left: none; } /* Next (Right) */
+
+
+                /* Weekend Styling */
+                .weekend-day { background-color: rgba(0, 0, 0, 0.03); }
+                .dark .weekend-day { background-color: rgba(0, 0, 0, 0.2); }
             `}</style>
             <div className="p-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between bg-zinc-50/50 dark:bg-zinc-900">
                 <h2 className="font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
@@ -117,6 +170,16 @@ const CalendarPanel: React.FC = () => {
                     selectable
                     onSelectSlot={handleSelectSlot}
                     components={components}
+                    culture={language}
+                    formats={formats}
+                    messages={messages}
+                    dayPropGetter={(date) => {
+                        const day = date.getDay();
+                        if (day === 0 || day === 6) {
+                            return { className: 'weekend-day' };
+                        }
+                        return {};
+                    }}
                 />
 
                 {/* Custom Tooltip */}

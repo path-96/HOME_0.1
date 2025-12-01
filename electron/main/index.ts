@@ -215,6 +215,27 @@ ipcMain.handle('select-folder', async () => {
   return null;
 });
 
+ipcMain.handle('select-note-file', async () => {
+  const { canceled, filePaths } = await dialog.showOpenDialog({
+    properties: ['openFile'],
+    filters: [{ name: 'Text/Markdown', extensions: ['txt', 'md'] }]
+  });
+  if (!canceled && filePaths.length > 0) {
+    return filePaths[0];
+  }
+  return null;
+});
+
+ipcMain.handle('read-file', async (_, filePath) => {
+  try {
+    const content = await fs.readFile(filePath, 'utf-8');
+    return content;
+  } catch (e) {
+    console.error('Failed to read file', e);
+    return null;
+  }
+});
+
 ipcMain.handle('get-network-interfaces', async () => {
   return new Promise((resolve) => {
     // Use PowerShell to get the exact interface names as recognized by the OS

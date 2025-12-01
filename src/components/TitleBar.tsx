@@ -21,9 +21,9 @@ const TitleBar: React.FC = () => {
     const { toggleLanguage, language } = useApp();
 
     return (
-        <div className="h-8 w-full bg-zinc-50 dark:bg-zinc-950 flex items-center justify-between select-none transition-colors duration-200" style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}>
+        <div className="h-8 w-full bg-zinc-50/50 dark:bg-zinc-900 flex items-center justify-between select-none transition-colors duration-200" style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}>
             <div className="px-4 text-xs font-medium text-zinc-500 dark:text-zinc-500 flex items-center gap-2">
-                HOME 1.1
+                HOME 0.1
                 <button
                     onClick={toggleLanguage}
                     className="p-1 rounded hover:bg-zinc-500/10 text-zinc-500 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"

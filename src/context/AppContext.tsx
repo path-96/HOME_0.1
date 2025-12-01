@@ -306,7 +306,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             // Notes
             notes: 'Notes',
             viewLarge: 'View Large',
-            export: 'Export'
+            export: 'Export',
+            import: 'Import'
         },
         ja: {
             projects: 'プロジェクト',
@@ -381,7 +382,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             viewLarge: '拡大表示',
             export: 'エクスポート',
             addNewShortcut: '新規ショートカット追加',
-            editShortcut: 'ショートカット編集'
+            editShortcut: 'ショートカット編集',
+            import: 'インポート'
         }
     };
 

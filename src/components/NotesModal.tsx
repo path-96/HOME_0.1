@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X } from 'lucide-react';
+import { X, Upload } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
@@ -48,6 +48,28 @@ const NotesModal: React.FC<NotesModalProps> = ({ isOpen, onClose }) => {
         }
     };
 
+    const handleImport = async () => {
+        if (!activeProject) return;
+        try {
+            // @ts-ignore
+            const filePath = await window.ipcRenderer.invoke('select-note-file');
+            if (filePath) {
+                // @ts-ignore
+                const content = await window.ipcRenderer.invoke('read-file', filePath);
+                if (content) {
+                    const html = converter.makeHtml(content);
+                    setEditorContent(html);
+
+                    // Update project notes immediately
+                    const markdown = turndownService.turndown(html);
+                    updateProjectNotes(activeProject.id, markdown);
+                }
+            }
+        } catch (err) {
+            console.error('Failed to import notes', err);
+        }
+    };
+
     if (!isOpen || !activeProject) return null;
 
     const modules = {
@@ -75,6 +97,13 @@ const NotesModal: React.FC<NotesModalProps> = ({ isOpen, onClose }) => {
                     <h2 className="font-semibold text-zinc-900 dark:text-zinc-100 text-lg">
                         {activeProject.name} - {t('notes')}
                     </h2>
+                    <button
+                        onClick={handleImport}
+                        className="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors text-zinc-500 dark:text-zinc-400 mr-1"
+                        title={t('import')}
+                    >
+                        <Upload size={20} />
+                    </button>
                     <button
                         onClick={onClose}
                         className="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors text-zinc-500 dark:text-zinc-400"
