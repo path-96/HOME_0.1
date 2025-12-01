@@ -1,6 +1,7 @@
 {
-  "name": "home-1.1",
-  "version": "1.1.0",
+  "name": "home-0.1",
+  "productName": "HOME_0.1",
+  "version": "0.1.0",
   "main": "dist-electron/main/index.js",
   "description": "A comprehensive project management and productivity tool.",
   "author": "",

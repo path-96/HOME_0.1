@@ -1,4 +1,4 @@
-# HOME 1.1
+# HOME 0.1
 
 A powerful, customizable productivity application designed to help you manage projects, shortcuts, notes, and your schedule all in one place. Built with Electron, React, and Vite.
 
@@ -42,7 +42,7 @@ A powerful, customizable productivity application designed to help you manage pr
     ```
 2.  Navigate to the project directory:
     ```bash
-    cd HOME_1.1
+    cd HOME_0.1
     ```
 3.  Install dependencies:
     ```bash
