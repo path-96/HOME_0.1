@@ -13,7 +13,7 @@ interface NotesAreaProps {
 }
 
 const NotesArea: React.FC<NotesAreaProps> = ({ isCollapsed = false, onToggleCollapse }) => {
-    const { projects, activeProjectId, updateProjectNotes } = useApp();
+    const { projects, activeProjectId, updateProjectNotes, t } = useApp();
     const activeProject = projects.find(p => p.id === activeProjectId);
     const [editorContent, setEditorContent] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -89,21 +89,21 @@ const NotesArea: React.FC<NotesAreaProps> = ({ isCollapsed = false, onToggleColl
                     {onToggleCollapse && (
                         isCollapsed ? <ChevronUp size={16} /> : <ChevronDown size={16} />
                     )}
-                    <FileText size={16} className="text-emerald-600 dark:text-emerald-500" />
-                    {activeProject.name} - Notes
+                    <FileText size={16} className="text-zinc-600 dark:text-zinc-500" />
+                    {activeProject.name} - {t('notes')}
                 </h2>
                 <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
                     <button
                         onClick={() => setIsModalOpen(true)}
-                        className="p-1.5 text-zinc-600 dark:text-zinc-400 hover:text-emerald-700 dark:hover:text-emerald-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded transition-colors"
-                        title="View Large"
+                        className="p-1.5 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded transition-colors"
+                        title={t('viewLarge')}
                     >
                         <Maximize2 size={16} />
                     </button>
                     <button
                         onClick={handleExport}
-                        className="p-1.5 text-zinc-600 dark:text-zinc-400 hover:text-emerald-700 dark:hover:text-emerald-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded transition-colors"
-                        title="Export"
+                        className="p-1.5 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded transition-colors"
+                        title={t('export')}
                     >
                         <Save size={16} />
                     </button>

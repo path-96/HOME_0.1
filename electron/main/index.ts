@@ -1,12 +1,14 @@
 import { app, BrowserWindow, shell, ipcMain, dialog } from 'electron'
-import { exec } from 'child_process'
+import { exec, spawn } from 'child_process'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import os from 'node:os'
+import fs from 'node:fs/promises'
 import { update } from './update'
 import { setupAuth } from './auth'
 import dotenv from 'dotenv'
+import iconv from 'iconv-lite';
 
 dotenv.config()
 
@@ -213,33 +215,87 @@ ipcMain.handle('select-folder', async () => {
   return null;
 });
 
-ipcMain.handle('get-network-interfaces', () => {
-  const interfaces = os.networkInterfaces();
-  const names = Object.keys(interfaces);
-  console.log('Detected Network Interfaces:', names);
-  return names;
+ipcMain.handle('get-network-interfaces', async () => {
+  return new Promise((resolve) => {
+    // Use PowerShell to get the exact interface names as recognized by the OS
+    // We use 'binary' encoding to get raw bytes, then decode with iconv-lite
+    exec('powershell -Command "Get-NetAdapter | Select-Object -ExpandProperty Name"', { encoding: 'binary' }, (error, stdout, stderr) => {
+      if (error) {
+        console.error('Failed to list interfaces via PowerShell:', error);
+        // Fallback to os.networkInterfaces if PowerShell fails
+        const interfaces = os.networkInterfaces();
+        const names = Object.keys(interfaces).filter(name =>
+          !name.toLowerCase().includes('loopback') &&
+          !name.toLowerCase().includes('pseudo')
+        );
+        resolve(names);
+        return;
+      }
+
+      // Decode output from Shift-JIS (common on Japanese Windows) to UTF-8
+      const decodedStdout = iconv.decode(Buffer.from(stdout, 'binary'), 'cp932'); // cp932 is Shift-JIS
+
+      const names = decodedStdout.split('\r\n').map(n => n.trim()).filter(n => n.length > 0);
+      console.log('Detected Network Interfaces (PowerShell):', names);
+      resolve(names);
+    });
+  });
 });
 
 ipcMain.handle('set-network-settings', async (_, { ip, gateway, interfaceName }) => {
-  return new Promise((resolve) => {
-    // Note: This requires the app to be run as Administrator
-    const iface = interfaceName || "Ethernet";
+  return new Promise(async (resolve) => {
+    const iface = (interfaceName || "Ethernet").trim();
     console.log(`Attempting to set network settings for interface: "${iface}"`);
     console.log(`IP: ${ip}, Gateway: ${gateway}`);
 
-    const command = `netsh interface ip set address "${iface}" static ${ip} 255.255.255.0 ${gateway}`;
-    console.log(`Executing command: ${command}`);
-
-    exec(command, { encoding: 'utf8' }, (error, stdout, stderr) => {
-      if (error) {
-        console.error(`exec error: ${error}`);
-        console.error(`stderr: ${stderr}`);
-        console.error(`stdout: ${stdout}`);
-        resolve({ success: false, error: `${error.message}. Stderr: ${stderr}` });
+    // Check for admin privileges first
+    exec('net session', async (adminErr) => {
+      if (adminErr) {
+        console.error('Not running as administrator');
+        resolve({ success: false, error: 'Application is not running as Administrator. Please right-click and "Run as administrator".' });
         return;
       }
-      console.log('Network settings applied successfully.');
-      resolve({ success: true });
+
+      // Use a temporary batch file to handle character encoding (Shift-JIS) for the interface name.
+      // Node.js spawn/exec can have trouble passing non-ASCII arguments to legacy Windows tools like netsh.
+      const tempPath = path.join(os.tmpdir(), `set_ip_${Date.now()}.bat`);
+      // Command: netsh interface ipv4 set address name="Interface Name" static IP MASK GATEWAY
+      // We add 'chcp 932' to ensure the batch file runs with the correct code page, though saving it as CP932 usually suffices.
+      const command = `@echo off\r\nnetsh interface ipv4 set address name="${iface}" static ${ip} 255.255.255.0 ${gateway}`;
+
+      try {
+        console.log(`Writing batch file to: ${tempPath}`);
+        // Encode the file content as CP932 (Shift-JIS)
+        const encodedCommand = iconv.encode(command, 'cp932');
+        await fs.writeFile(tempPath, encodedCommand);
+
+        // Execute the batch file
+        exec(`"${tempPath}"`, { encoding: 'binary' }, async (error, stdout, stderr) => {
+          // Clean up temp file
+          try { await fs.unlink(tempPath); } catch (e) { console.error('Failed to delete temp file:', e); }
+
+          // Decode output
+          const stdoutData = iconv.decode(Buffer.from(stdout, 'binary'), 'cp932');
+          const stderrData = iconv.decode(Buffer.from(stderr, 'binary'), 'cp932');
+
+          if (error) {
+            console.error(`Batch file execution failed: ${error}`);
+            console.error(`stderr: ${stderrData}`);
+            console.error(`stdout: ${stdoutData}`);
+
+            resolve({
+              success: false,
+              error: `Failed to set IP via batch file.\nError: ${stderrData}\nOutput: ${stdoutData}`
+            });
+            return;
+          }
+          console.log('Network settings applied successfully via batch file.');
+          resolve({ success: true });
+        });
+      } catch (e) {
+        console.error('Unexpected error in set-network-settings:', e);
+        resolve({ success: false, error: `Unexpected error: ${e instanceof Error ? e.message : String(e)}` });
+      }
     });
   });
 });

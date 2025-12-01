@@ -15,12 +15,13 @@ const Layout: React.FC<LayoutProps> = ({ children, rightPanel }) => {
   const [rightPanelOpen, setRightPanelOpen] = useState(false);
   const [rightPanelWidth, setRightPanelWidth] = useState(384); // Default w-96 (24rem * 16px)
   const isResizingRef = useRef(false);
-  const { projects, activeProjectId, updateProject, globalNetworkSettings } = useApp();
+  const { projects, activeProjectId, updateProject, globalNetworkSettings, availableInterfaces, refreshInterfaces, t } = useApp();
 
   // Network Modal State
   const [isNetworkModalOpen, setIsNetworkModalOpen] = useState(false);
   const [networkIp, setNetworkIp] = useState('');
   const [networkGateway, setNetworkGateway] = useState('');
+  const [networkInterface, setNetworkInterface] = useState('');
 
   const activeProject = projects.find(p => p.id === activeProjectId);
 
@@ -51,6 +52,8 @@ const Layout: React.FC<LayoutProps> = ({ children, rightPanel }) => {
     if (activeProject) {
       setNetworkIp(activeProject.ip || '');
       setNetworkGateway(activeProject.gateway || '');
+      setNetworkInterface(activeProject.interfaceName || globalNetworkSettings.interfaceName || 'Ethernet');
+      refreshInterfaces();
       setIsNetworkModalOpen(true);
     }
   };
@@ -60,7 +63,8 @@ const Layout: React.FC<LayoutProps> = ({ children, rightPanel }) => {
       // Update local state
       updateProject(activeProject.id, {
         ip: networkIp,
-        gateway: networkGateway
+        gateway: networkGateway,
+        interfaceName: networkInterface
       });
 
       // Apply system settings
@@ -69,17 +73,17 @@ const Layout: React.FC<LayoutProps> = ({ children, rightPanel }) => {
         const result = await window.ipcRenderer.invoke('set-network-settings', {
           ip: networkIp,
           gateway: networkGateway,
-          interfaceName: globalNetworkSettings.interfaceName
+          interfaceName: networkInterface
         });
 
         if (result.success) {
-          alert('Network settings applied successfully!');
+          alert(t('networkSuccess'));
         } else {
-          alert(`Failed to apply network settings: ${result.error}\nMake sure you are running as Administrator.`);
+          alert(`${t('networkFailed')}: ${result.error}\n${t('adminRequired')}`);
         }
       } catch (error) {
         console.error('Failed to set network settings:', error);
-        alert('Failed to set network settings. See console for details.');
+        alert(t('networkFailed'));
       }
 
       setIsNetworkModalOpen(false);
@@ -104,7 +108,7 @@ const Layout: React.FC<LayoutProps> = ({ children, rightPanel }) => {
           <div className="h-14 border-b border-zinc-200 dark:border-zinc-800 flex items-center px-4 justify-between bg-zinc-50/50 dark:bg-zinc-900/50 backdrop-blur shrink-0 transition-colors duration-200">
             <button
               onClick={() => setLeftPanelOpen(!leftPanelOpen)}
-              className="p-2 bg-transparent border-none outline-none hover:bg-emerald-500/10 rounded-lg transition-colors text-emerald-900/40 dark:text-emerald-500/40 hover:text-emerald-900 dark:hover:text-emerald-400"
+              className="p-2 bg-transparent border-none outline-none hover:bg-zinc-500/10 rounded-lg transition-colors text-zinc-900/40 dark:text-zinc-500/40 hover:text-zinc-900 dark:hover:text-zinc-400"
               title="Toggle Sidebar"
             >
               <Menu size={20} />
@@ -119,15 +123,15 @@ const Layout: React.FC<LayoutProps> = ({ children, rightPanel }) => {
                   )}
                 </>
               ) : (
-                <div className="font-semibold text-lg text-zinc-400 dark:text-zinc-600">No Project Selected</div>
+                <div className="font-semibold text-lg text-zinc-400 dark:text-zinc-600">{t('noProjectSelected')}</div>
               )}
             </div>
 
             {activeProject && (
               <button
                 onClick={openNetworkModal}
-                className="p-2 mr-2 bg-transparent border-none outline-none rounded-lg transition-colors text-emerald-900/40 dark:text-emerald-500/40 hover:bg-emerald-500/10 hover:text-emerald-900 dark:hover:text-emerald-400"
-                title="Network Settings"
+                className="p-2 mr-2 bg-transparent border-none outline-none rounded-lg transition-colors text-zinc-900/40 dark:text-zinc-500/40 hover:bg-zinc-500/10 hover:text-zinc-900 dark:hover:text-zinc-400"
+                title={t('projectNetworkSettings')}
               >
                 <Network size={20} />
               </button>
@@ -136,10 +140,10 @@ const Layout: React.FC<LayoutProps> = ({ children, rightPanel }) => {
             <button
               onClick={() => setRightPanelOpen(!rightPanelOpen)}
               className={`p-2 bg-transparent border-none outline-none rounded-lg transition-colors ${rightPanelOpen
-                ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10'
-                : 'text-emerald-900/40 dark:text-emerald-500/40 hover:bg-emerald-500/10 hover:text-emerald-900 dark:hover:text-emerald-400'
+                ? 'text-zinc-600 dark:text-zinc-400 bg-zinc-500/10'
+                : 'text-zinc-900/40 dark:text-zinc-500/40 hover:bg-zinc-500/10 hover:text-zinc-900 dark:hover:text-zinc-400'
                 }`}
-              title="Toggle Calendar"
+              title={t('calendar')}
             >
               <Calendar size={20} />
             </button>
@@ -158,7 +162,7 @@ const Layout: React.FC<LayoutProps> = ({ children, rightPanel }) => {
         >
           {/* Resize Handle */}
           <div
-            className="absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-emerald-500/50 z-50 transition-colors"
+            className="absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-zinc-500/50 z-50 transition-colors"
             onMouseDown={startResizing}
           />
           {rightPanel}
@@ -168,42 +172,55 @@ const Layout: React.FC<LayoutProps> = ({ children, rightPanel }) => {
       <Modal
         isOpen={isNetworkModalOpen}
         onClose={() => setIsNetworkModalOpen(false)}
-        title="Project Network Settings"
+        title={t('projectNetworkSettings')}
         footer={
           <>
             <button
               onClick={() => setIsNetworkModalOpen(false)}
-              className="px-4 py-2 text-sm font-medium text-green-800 dark:text-zinc-400 hover:text-green-950 dark:hover:text-zinc-100 hover:bg-green-100 dark:hover:bg-zinc-700 rounded transition-colors"
+              className="px-4 py-2 text-sm font-medium text-zinc-800 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-700 rounded transition-colors"
             >
-              Cancel
+              {t('cancel')}
             </button>
             <button
               onClick={handleSaveNetwork}
-              className="px-4 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded transition-colors"
+              className="px-4 py-2 text-sm font-medium text-white bg-zinc-600 hover:bg-zinc-700 rounded transition-colors"
             >
-              Change IP
+              {t('changeIp')}
             </button>
           </>
         }
       >
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-green-900 dark:text-zinc-300 mb-1">IP Address</label>
+            <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-300 mb-1">{t('networkInterface')}</label>
+            <select
+              value={networkInterface}
+              onChange={(e) => setNetworkInterface(e.target.value)}
+              className="w-full bg-white dark:bg-zinc-700 text-zinc-950 dark:text-white px-3 py-2 rounded outline-none focus:ring-2 focus:ring-zinc-500 border border-zinc-200 dark:border-zinc-600 focus:border-zinc-500 transition-all"
+            >
+              {availableInterfaces.map(iface => (
+                <option key={iface} value={iface}>{iface}</option>
+              ))}
+              {availableInterfaces.length === 0 && <option value="Ethernet">{t('ethernetDefault')}</option>}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-300 mb-1">{t('ipAddress')}</label>
             <input
               type="text"
               value={networkIp}
               onChange={e => setNetworkIp(e.target.value)}
-              className="w-full bg-white dark:bg-zinc-700 text-green-950 dark:text-white px-3 py-2 rounded outline-none focus:ring-2 focus:ring-emerald-500 border border-green-200 dark:border-zinc-600 focus:border-emerald-500 transition-all"
+              className="w-full bg-white dark:bg-zinc-700 text-zinc-950 dark:text-white px-3 py-2 rounded outline-none focus:ring-2 focus:ring-zinc-500 border border-zinc-200 dark:border-zinc-600 focus:border-zinc-500 transition-all"
               placeholder="e.g., 192.168.1.10"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-green-900 dark:text-zinc-300 mb-1">Default Gateway</label>
+            <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-300 mb-1">{t('defaultGateway')}</label>
             <input
               type="text"
               value={networkGateway}
               onChange={e => setNetworkGateway(e.target.value)}
-              className="w-full bg-white dark:bg-zinc-700 text-green-950 dark:text-white px-3 py-2 rounded outline-none focus:ring-2 focus:ring-emerald-500 border border-green-200 dark:border-zinc-600 focus:border-emerald-500 transition-all"
+              className="w-full bg-white dark:bg-zinc-700 text-zinc-950 dark:text-white px-3 py-2 rounded outline-none focus:ring-2 focus:ring-zinc-500 border border-zinc-200 dark:border-zinc-600 focus:border-zinc-500 transition-all"
               placeholder="e.g., 192.168.1.1"
             />
           </div>
@@ -214,5 +231,3 @@ const Layout: React.FC<LayoutProps> = ({ children, rightPanel }) => {
 };
 
 export default Layout;
-
-

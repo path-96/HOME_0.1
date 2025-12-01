@@ -6,6 +6,7 @@ export interface Project {
     notes: string;
     ip?: string;
     gateway?: string;
+    interfaceName?: string;
 }
 
 export interface Shortcut {

@@ -1,15 +1,14 @@
 import React, { useState, useRef } from 'react';
 import { X, Settings as SettingsIcon, Database, Download, Upload, AlertTriangle, Network } from 'lucide-react';
+import { useApp } from '../context/AppContext';
 
 interface SettingsModalProps {
     isOpen: boolean;
     onClose: () => void;
 }
 
-import { useApp } from '../context/AppContext';
-
 const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
-    const { theme, toggleTheme, projects, shortcuts, globalShortcuts, calendarMemos, importData, globalNetworkSettings, updateGlobalNetworkSettings, availableInterfaces, refreshInterfaces } = useApp();
+    const { theme, toggleTheme, projects, shortcuts, globalShortcuts, calendarMemos, importData, globalNetworkSettings, updateGlobalNetworkSettings, availableInterfaces, refreshInterfaces, t } = useApp();
     const [activeTab, setActiveTab] = useState<'general' | 'data' | 'network'>('general');
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -47,13 +46,13 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
             });
 
             if (result.success) {
-                alert('Network settings saved and applied successfully!');
+                alert(t('networkSuccess'));
             } else {
-                alert(`Failed to apply network settings: ${result.error}\nMake sure you are running as Administrator.`);
+                alert(`${t('networkFailed')}: ${result.error}\n${t('adminRequired')}`);
             }
         } catch (error) {
             console.error('Failed to set network settings:', error);
-            alert('Failed to set network settings. See console for details.');
+            alert(t('networkFailed'));
         }
     };
 
@@ -88,14 +87,14 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
         reader.onload = (event) => {
             try {
                 const data = JSON.parse(event.target?.result as string);
-                if (confirm('This will overwrite your current data. Are you sure you want to proceed?')) {
+                if (confirm(t('importWarning'))) {
                     importData(data);
-                    alert('Data imported successfully!');
+                    alert(t('importSuccess'));
                     onClose();
                 }
             } catch (error) {
                 console.error('Import failed', error);
-                alert('Failed to import data. Invalid file format.');
+                alert(t('importFailed'));
             }
         };
         reader.readAsText(file);
@@ -105,50 +104,50 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
 
     return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm">
-            <div className="bg-gray-900 border border-gray-700 rounded-xl w-[600px] h-[500px] flex flex-col shadow-2xl text-zinc-100">
+            <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl w-[600px] h-[500px] flex flex-col shadow-2xl text-zinc-900 dark:text-zinc-100">
                 {/* Header */}
-                <div className="flex items-center justify-between p-4 border-b border-gray-800">
-                    <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                <div className="flex items-center justify-between p-4 border-b border-zinc-200 dark:border-zinc-800">
+                    <h2 className="text-lg font-semibold flex items-center gap-2">
                         <SettingsIcon size={20} />
-                        Settings
+                        {t('settings')}
                     </h2>
-                    <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors">
+                    <button onClick={onClose} className="text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">
                         <X size={20} />
                     </button>
                 </div>
 
                 <div className="flex flex-1 overflow-hidden">
                     {/* Sidebar */}
-                    <div className="w-48 border-r border-gray-800 bg-gray-900/50 p-2">
+                    <div className="w-48 border-r border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 p-2">
                         <button
                             onClick={() => setActiveTab('general')}
                             className={`w-full text-left px-4 py-2 rounded-lg mb-1 flex items-center gap-2 transition-colors ${activeTab === 'general'
-                                ? 'bg-blue-600/20 text-blue-400'
-                                : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                                ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100'
+                                : 'text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-100'
                                 }`}
                         >
                             <SettingsIcon size={16} />
-                            General
+                            {t('general')}
                         </button>
                         <button
                             onClick={() => setActiveTab('data')}
                             className={`w-full text-left px-4 py-2 rounded-lg mb-1 flex items-center gap-2 transition-colors ${activeTab === 'data'
-                                ? 'bg-blue-600/20 text-blue-400'
-                                : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                                ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100'
+                                : 'text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-100'
                                 }`}
                         >
                             <Database size={16} />
-                            Data
+                            {t('data')}
                         </button>
                         <button
                             onClick={() => setActiveTab('network')}
                             className={`w-full text-left px-4 py-2 rounded-lg mb-1 flex items-center gap-2 transition-colors ${activeTab === 'network'
-                                ? 'bg-blue-600/20 text-blue-400'
-                                : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                                ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100'
+                                : 'text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-100'
                                 }`}
                         >
                             <Network size={16} />
-                            Network
+                            {t('network')}
                         </button>
                     </div>
 
@@ -158,31 +157,31 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                             <div className="space-y-8">
                                 {/* Appearance Section */}
                                 <div>
-                                    <h3 className="text-white font-medium mb-4">Appearance</h3>
-                                    <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700">
+                                    <h3 className="font-medium mb-4">{t('appearance')}</h3>
+                                    <div className="bg-zinc-50 dark:bg-zinc-800/50 rounded-lg p-4 border border-zinc-200 dark:border-zinc-700">
                                         <div className="flex items-center justify-between">
                                             <div>
-                                                <p className="text-sm text-white font-medium">Theme</p>
-                                                <p className="text-xs text-gray-400 mt-1">Choose your preferred appearance</p>
+                                                <p className="text-sm font-medium">{t('theme')}</p>
+                                                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">{t('chooseTheme')}</p>
                                             </div>
-                                            <div className="flex bg-gray-900 rounded-lg p-1 border border-gray-700">
+                                            <div className="flex bg-zinc-200 dark:bg-zinc-900 rounded-lg p-1 border border-zinc-300 dark:border-zinc-700">
                                                 <button
                                                     onClick={toggleTheme}
                                                     className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${theme === 'light'
-                                                        ? 'bg-white text-gray-900 shadow-sm'
-                                                        : 'text-gray-400 hover:text-white'
+                                                        ? 'bg-white text-zinc-900 shadow-sm'
+                                                        : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
                                                         }`}
                                                 >
-                                                    Light
+                                                    {t('light')}
                                                 </button>
                                                 <button
                                                     onClick={toggleTheme}
                                                     className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${theme === 'dark'
-                                                        ? 'bg-gray-700 text-white shadow-sm'
-                                                        : 'text-gray-400 hover:text-white'
+                                                        ? 'bg-zinc-700 text-white shadow-sm'
+                                                        : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
                                                         }`}
                                                 >
-                                                    Dark
+                                                    {t('dark')}
                                                 </button>
                                             </div>
                                         </div>
@@ -194,40 +193,40 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                         {activeTab === 'data' && (
                             <div className="space-y-8">
                                 <div>
-                                    <h3 className="text-white font-medium mb-4">Data Management</h3>
+                                    <h3 className="font-medium mb-4">{t('dataManagement')}</h3>
 
                                     <div className="space-y-4">
                                         {/* Export */}
-                                        <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700">
+                                        <div className="bg-zinc-50 dark:bg-zinc-800/50 rounded-lg p-4 border border-zinc-200 dark:border-zinc-700">
                                             <div className="flex items-center justify-between mb-2">
                                                 <div className="flex items-center gap-2">
-                                                    <Download size={18} className="text-emerald-400" />
-                                                    <span className="font-medium text-white">Export Data</span>
+                                                    <Download size={18} className="text-zinc-500" />
+                                                    <span className="font-medium">{t('exportData')}</span>
                                                 </div>
                                                 <button
                                                     onClick={handleExport}
-                                                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-colors"
+                                                    className="px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 text-white dark:text-zinc-900 text-sm font-medium rounded-lg transition-colors"
                                                 >
-                                                    Export JSON
+                                                    {t('exportJson')}
                                                 </button>
                                             </div>
-                                            <p className="text-xs text-gray-400">
-                                                Download a backup of all your projects, shortcuts, and notes.
+                                            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                                                {t('exportDesc')}
                                             </p>
                                         </div>
 
                                         {/* Import */}
-                                        <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700">
+                                        <div className="bg-zinc-50 dark:bg-zinc-800/50 rounded-lg p-4 border border-zinc-200 dark:border-zinc-700">
                                             <div className="flex items-center justify-between mb-2">
                                                 <div className="flex items-center gap-2">
-                                                    <Upload size={18} className="text-blue-400" />
-                                                    <span className="font-medium text-white">Import Data</span>
+                                                    <Upload size={18} className="text-zinc-500" />
+                                                    <span className="font-medium">{t('importData')}</span>
                                                 </div>
                                                 <button
                                                     onClick={() => fileInputRef.current?.click()}
-                                                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
+                                                    className="px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 text-white dark:text-zinc-900 text-sm font-medium rounded-lg transition-colors"
                                                 >
-                                                    Import JSON
+                                                    {t('importJson')}
                                                 </button>
                                                 <input
                                                     type="file"
@@ -237,12 +236,12 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                                                     className="hidden"
                                                 />
                                             </div>
-                                            <p className="text-xs text-gray-400 mb-2">
-                                                Restore your data from a backup file.
+                                            <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-2">
+                                                {t('importDesc')}
                                             </p>
-                                            <div className="flex items-start gap-2 p-2 bg-yellow-500/10 border border-yellow-500/20 rounded text-yellow-200/80 text-xs">
+                                            <div className="flex items-start gap-2 p-2 bg-yellow-500/10 border border-yellow-500/20 rounded text-yellow-600 dark:text-yellow-200/80 text-xs">
                                                 <AlertTriangle size={14} className="mt-0.5 shrink-0" />
-                                                <span>Warning: Importing data will overwrite all your current projects and settings. This action cannot be undone.</span>
+                                                <span>{t('importWarning')}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -253,51 +252,51 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                         {activeTab === 'network' && (
                             <div className="space-y-8">
                                 <div>
-                                    <h3 className="text-white font-medium mb-4">Global Network Settings</h3>
-                                    <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700 space-y-4">
+                                    <h3 className="font-medium mb-4">{t('globalNetworkSettings')}</h3>
+                                    <div className="bg-zinc-50 dark:bg-zinc-800/50 rounded-lg p-4 border border-zinc-200 dark:border-zinc-700 space-y-4">
                                         <div>
-                                            <label className="block text-sm text-gray-400 mb-1">Network Interface</label>
+                                            <label className="block text-sm text-zinc-500 dark:text-zinc-400 mb-1">{t('networkInterface')}</label>
                                             <select
                                                 value={tempInterface}
                                                 onChange={(e) => setTempInterface(e.target.value)}
-                                                className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 transition-colors"
+                                                className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-500 transition-colors"
                                             >
                                                 {availableInterfaces.map(iface => (
                                                     <option key={iface} value={iface}>{iface}</option>
                                                 ))}
                                                 {availableInterfaces.length === 0 && <option value="Ethernet">Ethernet (Default)</option>}
                                             </select>
-                                            <p className="text-xs text-gray-500 mt-1">Select the network adapter to configure.</p>
+                                            <p className="text-xs text-zinc-500 dark:text-zinc-500 mt-1">{t('selectAdapter')}</p>
                                         </div>
                                         <div>
-                                            <label className="block text-sm text-gray-400 mb-1">Default IP Address</label>
+                                            <label className="block text-sm text-zinc-500 dark:text-zinc-400 mb-1">{t('defaultIp')}</label>
                                             <input
                                                 type="text"
                                                 value={tempIp}
                                                 onChange={(e) => setTempIp(e.target.value)}
                                                 placeholder="e.g., 192.168.1.1"
-                                                className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 transition-colors"
+                                                className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-500 transition-colors"
                                             />
                                         </div>
                                         <div>
-                                            <label className="block text-sm text-gray-400 mb-1">Default Gateway</label>
+                                            <label className="block text-sm text-zinc-500 dark:text-zinc-400 mb-1">{t('defaultGateway')}</label>
                                             <input
                                                 type="text"
                                                 value={tempGateway}
                                                 onChange={(e) => setTempGateway(e.target.value)}
                                                 placeholder="e.g., 192.168.1.254"
-                                                className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 transition-colors"
+                                                className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-500 transition-colors"
                                             />
                                         </div>
                                         <div className="flex items-center justify-between pt-2">
-                                            <p className="text-xs text-gray-500">
-                                                These settings will be used as defaults but can be overridden per project.
+                                            <p className="text-xs text-zinc-500 dark:text-zinc-500">
+                                                {t('networkNote')}
                                             </p>
                                             <button
                                                 onClick={handleSaveNetworkSettings}
-                                                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
+                                                className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 text-white dark:text-zinc-900 text-sm font-medium rounded-lg transition-colors"
                                             >
-                                                Save Network Settings
+                                                {t('changeNetworkSetting')}
                                             </button>
                                         </div>
                                     </div>

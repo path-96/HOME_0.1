@@ -12,7 +12,7 @@ interface NotesModalProps {
 }
 
 const NotesModal: React.FC<NotesModalProps> = ({ isOpen, onClose }) => {
-    const { projects, activeProjectId, updateProjectNotes } = useApp();
+    const { projects, activeProjectId, updateProjectNotes, t } = useApp();
     const activeProject = projects.find(p => p.id === activeProjectId);
     const [editorContent, setEditorContent] = useState('');
     const quillRef = useRef<any>(null);
@@ -73,7 +73,7 @@ const NotesModal: React.FC<NotesModalProps> = ({ isOpen, onClose }) => {
                 {/* Header */}
                 <div className="p-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between bg-zinc-50 dark:bg-zinc-900">
                     <h2 className="font-semibold text-zinc-900 dark:text-zinc-100 text-lg">
-                        {activeProject.name} - Notes
+                        {activeProject.name} - {t('notes')}
                     </h2>
                     <button
                         onClick={onClose}

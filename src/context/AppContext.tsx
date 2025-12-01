@@ -30,6 +30,9 @@ interface AppContextType {
     googleAuth: { isAuthenticated: boolean; tokens: any; user: any };
     login: () => Promise<void>;
     logout: () => void;
+    language: 'en' | 'ja';
+    toggleLanguage: () => void;
+    t: (key: any) => string;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -228,6 +231,181 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
     };
 
+    const [language, setLanguage] = useState<'en' | 'ja'>('en');
+
+    // Translations
+    const translations = {
+        en: {
+            projects: 'Projects',
+            newProject: 'New Project',
+            settings: 'Settings',
+            general: 'General',
+            data: 'Data',
+            network: 'Network',
+            appearance: 'Appearance',
+            theme: 'Theme',
+            chooseTheme: 'Choose your preferred appearance',
+            light: 'Light',
+            dark: 'Dark',
+            dataManagement: 'Data Management',
+            exportData: 'Export Data',
+            exportJson: 'Export JSON',
+            exportDesc: 'Download a backup of all your projects, shortcuts, and notes.',
+            importData: 'Import Data',
+            importJson: 'Import JSON',
+            importDesc: 'Restore your data from a backup file.',
+            importWarning: 'Warning: Importing data will overwrite all your current projects and settings. This action cannot be undone.',
+            globalNetworkSettings: 'Global Network Settings',
+            networkInterface: 'Network Interface',
+            selectAdapter: 'Select the network adapter to configure.',
+            defaultIp: 'Default IP Address',
+            defaultGateway: 'Default Gateway',
+            networkNote: 'These settings will be used as defaults but can be overridden per project.',
+            changeNetworkSetting: 'Change Network Setting',
+            projectNetworkSettings: 'Project Network Settings',
+            ipAddress: 'IP Address',
+            gateway: 'Gateway',
+            changeIp: 'Change IP',
+            cancel: 'Cancel',
+            saveChanges: 'Save Changes',
+            create: 'Create',
+            createNewProject: 'Create New Project',
+            editProject: 'Edit Project',
+            projectName: 'Project Name',
+            description: 'Description (Optional)',
+            addGlobalShortcut: 'Add Global Shortcut',
+            editGlobalShortcut: 'Edit Global Shortcut',
+            addShortcut: 'Add Shortcut',
+            file: 'File',
+            folder: 'Folder',
+            link: 'Link',
+            filePath: 'File Path',
+            folderPath: 'Folder Path',
+            url: 'URL',
+            browse: 'Browse',
+            name: 'Name',
+            shortcutName: 'Shortcut Name',
+            deleteProjectConfirm: 'Are you sure you want to delete this project?',
+            importSuccess: 'Data imported successfully!',
+            importFailed: 'Failed to import data. Invalid file format.',
+            networkSuccess: 'Network settings applied successfully!',
+            networkFailed: 'Failed to apply network settings',
+            adminRequired: 'Make sure you are running as Administrator.',
+            // Layout
+            noProjectSelected: 'No Project Selected',
+            ethernetDefault: 'Ethernet (Default)',
+            // Calendar
+            calendar: 'Calendar',
+            viewFull: 'View Full',
+            addNote: 'Add a note...',
+            save: 'Save',
+            // Shortcut Grid
+            selectProjectToViewShortcuts: 'Select a project to view shortcuts',
+            dragDropFiles: 'Drag and drop files here',
+            orCreateShortcut: 'or create a new shortcut',
+            // Notes
+            notes: 'Notes',
+            viewLarge: 'View Large',
+            export: 'Export'
+        },
+        ja: {
+            projects: 'プロジェクト',
+            newProject: '新規プロジェクト',
+            settings: '設定',
+            general: '一般',
+            data: 'データ',
+            network: 'ネットワーク',
+            appearance: '外観',
+            theme: 'テーマ',
+            chooseTheme: 'お好みの外観を選択してください',
+            light: 'ライト',
+            dark: 'ダーク',
+            dataManagement: 'データ管理',
+            exportData: 'データのエクスポート',
+            exportJson: 'JSONをエクスポート',
+            exportDesc: 'すべてのプロジェクト、ショートカット、メモのバックアップをダウンロードします。',
+            importData: 'データのインポート',
+            importJson: 'JSONをインポート',
+            importDesc: 'バックアップファイルからデータを復元します。',
+            importWarning: '警告: データをインポートすると、現在のすべてのプロジェクトと設定が上書きされます。この操作は元に戻せません。',
+            globalNetworkSettings: 'グローバルネットワーク設定',
+            networkInterface: 'ネットワークインターフェース',
+            selectAdapter: '設定するネットワークアダプターを選択してください。',
+            defaultIp: 'デフォルトIPアドレス',
+            defaultGateway: 'デフォルトゲートウェイ',
+            networkNote: 'これらの設定はデフォルトとして使用されますが、プロジェクトごとに上書きできます。',
+            changeNetworkSetting: 'ネットワーク設定を変更',
+            projectNetworkSettings: 'プロジェクトネットワーク設定',
+            ipAddress: 'IPアドレス',
+            gateway: 'ゲートウェイ',
+            changeIp: 'IPを変更',
+            cancel: 'キャンセル',
+            saveChanges: '変更を保存',
+            create: '作成',
+            createNewProject: '新規プロジェクト作成',
+            editProject: 'プロジェクト編集',
+            projectName: 'プロジェクト名',
+            description: '説明 (オプション)',
+            addGlobalShortcut: 'グローバルショートカット追加',
+            editGlobalShortcut: 'グローバルショートカット編集',
+            addShortcut: 'ショートカット追加',
+            file: 'ファイル',
+            folder: 'フォルダ',
+            link: 'リンク',
+            filePath: 'ファイルパス',
+            folderPath: 'フォルダパス',
+            url: 'URL',
+            browse: '参照',
+            name: '名前',
+            shortcutName: 'ショートカット名',
+            deleteProjectConfirm: 'このプロジェクトを削除してもよろしいですか？',
+            importSuccess: 'データが正常にインポートされました！',
+            importFailed: 'データのインポートに失敗しました。ファイル形式が無効です。',
+            networkSuccess: 'ネットワーク設定が正常に適用されました！',
+            networkFailed: 'ネットワーク設定の適用に失敗しました',
+            adminRequired: '管理者として実行していることを確認してください。',
+            // Layout
+            noProjectSelected: 'プロジェクトが選択されていません',
+            ethernetDefault: 'イーサネット (デフォルト)',
+            // Calendar
+            calendar: 'カレンダー',
+            viewFull: '全画面表示',
+            addNote: 'メモを追加...',
+            save: '保存',
+            // Shortcut Grid
+            selectProjectToViewShortcuts: 'ショートカットを表示するにはプロジェクトを選択してください',
+            dragDropFiles: 'ここにファイルをドラッグ＆ドロップ',
+            orCreateShortcut: 'または新しいショートカットを作成',
+            // Notes
+            notes: 'メモ',
+            viewLarge: '拡大表示',
+            export: 'エクスポート',
+            addNewShortcut: '新規ショートカット追加',
+            editShortcut: 'ショートカット編集'
+        }
+    };
+
+    const t = (key: keyof typeof translations['en']) => {
+        return translations[language][key] || key;
+    };
+
+    const toggleLanguage = () => {
+        setLanguage(prev => prev === 'en' ? 'ja' : 'en');
+    };
+
+    // Load language from localStorage
+    useEffect(() => {
+        const savedLanguage = localStorage.getItem('language') as 'en' | 'ja';
+        if (savedLanguage) {
+            setLanguage(savedLanguage);
+        }
+    }, []);
+
+    // Save language to localStorage
+    useEffect(() => {
+        localStorage.setItem('language', language);
+    }, [language]);
+
     return (
         <AppContext.Provider value={{
             projects,
@@ -256,7 +434,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             refreshInterfaces,
             googleAuth,
             login,
-            logout
+            logout,
+            language,
+            toggleLanguage,
+            t
         }}>
             {children}
         </AppContext.Provider>
